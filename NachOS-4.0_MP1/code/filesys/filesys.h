@@ -45,13 +45,16 @@ typedef int OpenFileId;
 
 class FileSystem {
   public:
-    FileSystem() { 
-	for (int i = 0; i < 20; i++) OpenFileTable[i] = NULL; 
+    FileSystem() {
+	for (int i = 0; i < 20; i++){
+		OpenFileTable[i] = NULL; 
+		used_table[i] = false;
+	}
     }
 
     bool Create(char *name) {
+	DEBUG(dbgFile,"Create file:[" << name << "]");
 	int fileDescriptor = OpenForWrite(name);
-
 	if (fileDescriptor == -1) return FALSE;
 	Close(fileDescriptor); 
 	return TRUE; 
@@ -62,23 +65,80 @@ class FileSystem {
 	if (fileDescriptor == -1) return NULL;
 	return new OpenFile(fileDescriptor);
     }
-
-  
+    
 //  The OpenAFile function is used for kernel open system call
-/*  OpenFileId OpenAFile(char *name) {
+//  MP1 implementation
+  OpenFileId OpenAFile(char *name) {
+	//Must maintain table
+	//fileDescriptor should not be a id //then what is a fd?
+	int fileDescriptor = OpenForReadWrite(name, FALSE);
+	if (fileDescriptor == -1) return NULL;
+	DEBUG(dbgFile, "Tries to open a file with name: " << name);
+	OpenFile* opened_file;
+	for(int i = 0;i<20;i++){
+		if(used_table[i] == false){
+			opened_file = new OpenFile(fileDescriptor);
+			OpenFileTable[i] = opened_file;
+			DEBUG(dbgFile, "Open file succeeded!!!Assigned to id " << i);
+			used_table[i] = true;
+			id_to_fd[i] = fileDescriptor;
+			return i;
+		}
+	}
+	DEBUG(dbgFile, "Opened more than 20 files!!!Return -1!!!");
+	return -1;
     }
-    int WriteFile(char *buffer, int size, OpenFileId id){
-    }
-    int ReadFile(char *buffer, int size, OpenFileId id){
-    }
-    int CloseFile(OpenFileId id){
-    }
-*/
+//
+//  MP1 implementation
+    int writefile(char *buffer, int size, OpenFileId id){
+	if(used_table[id]){
+		DEBUG(dbgFile, "Start Writing to id " << id <<"!!!");
+		WriteFile(id_to_fd[id], buffer, size);
+		return 1;
+	}
+	else{
+		DEBUG(dbgFile, "File not opened!!! Return -1!!!");
+		return -1;
+    	}
+	}
+//  
+//  MP1 implementation
 
+    int readfile(char *buffer, int size, OpenFileId id){
+	int count;
+	if(used_table[id]){
+		DEBUG(dbgFile, "Start Reading from id" << id << "!!!");
+		count = ReadPartial(id_to_fd[id], buffer, size);
+		return count;
+	}
+	else{
+		DEBUG(dbgFile, "File not opened!!! Return -1!!!");
+		return -1;
+	}
+    }
+  
+//
+//  MP1 implementation
+    int CloseFile(OpenFileId id){
+	if(used_table[id]){
+		DEBUG(dbgFile, "closeing opened file!!!");
+		//Maintain table
+		used_table[id] = false;
+		Close(id_to_fd[id]);
+		return 1;
+	}
+	else{
+	DEBUG(dbgFile, "Close id not found!!!");
+	return -1;
+	}
+    }
+//
 
     bool Remove(char *name) { return Unlink(name) == 0; }
 
     OpenFile *OpenFileTable[20];
+    int id_to_fd[20];
+    bool used_table[20];
 };
 
 #else // FILESYS

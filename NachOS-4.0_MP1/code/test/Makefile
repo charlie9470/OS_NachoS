@@ -113,7 +113,7 @@ PROGRAMS = unknownhost
 else
 # change this if you create a new test program!
 #PROGRAMS = add halt shell matmult sort segments test1 test2 a
-PROGRAMS = add halt consoleIO_test1 consoleIO_test2 consoleIO_test3 fileIO_test1 fileIO_test2 LotOfAdd
+PROGRAMS = add halt fileIO_test1 fileIO_test2 LotOfAdd consoleIO_test1 consoleIO_test2 consoleIO_test3
 endif
 
 all: $(PROGRAMS)
@@ -196,7 +196,10 @@ fileIO_test2: fileIO_test2.o start.o
 	$(COFF2NOFF) fileIO_test2.coff fileIO_test2
 
 
-
+run_1:
+	../build.linux/nachos -d u,f -e fileIO_test1
+run_2:
+	../build.linux/nachos -e fileIO_test2
 clean:
 	$(RM) -f *.o *.ii
 	$(RM) -f *.coff
