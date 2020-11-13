@@ -200,6 +200,8 @@ run_1:
 	../build.linux/nachos -d u,f -e fileIO_test1
 run_2:
 	../build.linux/nachos -e fileIO_test2
+run_MP2:
+	../build.linux/nachos -e consoleIO_test1 -e consoleIO_test2
 clean:
 	$(RM) -f *.o *.ii
 	$(RM) -f *.coff
