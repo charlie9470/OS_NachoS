@@ -70,8 +70,14 @@ AddrSpace::AddrSpace()
     pageTable = new TranslationEntry[NumPhysPages];
     for (int i = 0; i < NumPhysPages; i++) {
 	pageTable[i].virtualPage = i;	// for now, virt page # = phys page #
-	pageTable[i].physicalPage = i;
-	pageTable[i].valid = TRUE;
+	pageTable[i].physicalPage = -1;
+/*	for(int j = 0;j<128;j++){
+		if(Free_Frame[j]){
+			pageTable[i].physicalPage = j;
+			Free_Frame[j] = false;
+		}
+	}
+*/	pageTable[i].valid = TRUE;
 	pageTable[i].use = FALSE;
 	pageTable[i].dirty = FALSE;
 	pageTable[i].readOnly = FALSE;  
@@ -311,6 +317,22 @@ AddrSpace::Translate(unsigned int vaddr, unsigned int *paddr, int isReadWrite)
     return NoException;
 }
 
+//MP2 implementation
+//Return all frame numbers that should be freed
+int
+AddrSpace::get_num_Pages(){
+	return numPages;
+}
 
-
-
+int*
+AddrSpace::get_Frames_free(){
+	int* return_array = (int*)malloc(numPages*sizeof(int));
+		for(int i = 0;i<numPages;i++){
+			return_array[i] = pageTable[i].physicalPage;
+		}
+	return return_array;
+}
+void
+AddrSpace::set_pageTable(int index,int value){
+	pageTable[index].physicalPage = value;
+}

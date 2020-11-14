@@ -39,6 +39,12 @@ class AddrSpace {
     // is 0 for Read, 1 for Write.
     ExceptionType Translate(unsigned int vaddr, unsigned int *paddr, int mode);
 
+	//MP2 implementation
+	//Return all frame numbers that should be freed
+	int* get_Frames_free();
+	int get_num_Pages();
+	void set_pageTable(int index,int value);
+
   private:
     TranslationEntry *pageTable;	// Assume linear page table translation
 					// for now!

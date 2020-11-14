@@ -30,6 +30,9 @@ Kernel::Kernel(int argc, char **argv)
     debugUserProg = FALSE;
     consoleIn = NULL;          // default is stdin
     consoleOut = NULL;         // default is stdout
+    for(int i =0;i<128;i++){
+	Free_Frame[i] = TRUE;
+    }
 #ifndef FILESYS_STUB
     formatFlag = FALSE;
 #endif
@@ -272,20 +275,33 @@ int Kernel::Exec(char* name)
 {
 	t[threadNum] = new Thread(name, threadNum);
 	t[threadNum]->space = new AddrSpace();
+	int PGS = t[threadNum]->space->get_num_Pages();
+	for(int i = 0;i<PGS;i++){
+		int frame_num = Get_Free_Frame();
+		t[threadNum]->space->set_pageTable(i,frame_num);
+		cout <<"Set " << i << " -> " << frame_num << endl;
+	}
 	t[threadNum]->Fork((VoidFunctionPtr) &ForkExecute, (void *)t[threadNum]);
 	threadNum++;
 
-	return threadNum-1;
-/*
+//	return threadNum-1;
+
     cout << "Total threads number is " << execfileNum << endl;
     for (int n=1;n<=execfileNum;n++) {
-		t[n] = new Thread(execfile[n]);
+/*		t[n] = new Thread(execfile[n]);
 		t[n]->space = new AddrSpace();
 		t[n]->Fork((VoidFunctionPtr) &ForkExecute, (void *)t[n]);
-		cout << "Thread " << execfile[n] << " is executing." << endl;
+*/		cout << "Thread " << execfile[n] << " is executing." << endl;
 	}
-	cout << "debug Kernel::Run finished.\n";	
-*/
+	cout << "debug Kernel::Run finished.\n";
+/*	int* Frame_Free_list = (int*)malloc(PGS*sizeof(int));
+	Frame_Free_list = t[threadNum]->space->get_Frames_free();
+	for(int i = 0;i<PGS;i++){
+		cout << "Setting " << Frame_Free_list[i] << " to free" << endl;
+		Free_Frame[Frame_Free_list[i]] = FALSE;
+	}
+*/	return threadNum-1;
+
 //  Thread *t1 = new Thread(execfile[1]);
 //  Thread *t1 = new Thread("../test/test1");
 //  Thread *t2 = new Thread("../test/test2");
@@ -301,4 +317,14 @@ int Kernel::Exec(char* name)
 //	currentThread->Finish();
 //    Kernel::Run();
 //  cout << "after ThreadedKernel:Run();" << endl;  // unreachable
+}
+int Kernel::Get_Free_Frame(){
+	for(int i = 0;i<128;i++){
+		if(Free_Frame[i] = TRUE){
+			Free_Frame[i] = FALSE;
+			return i;
+		}
+	}
+	printf("No Free Frame!!!\n");
+	return -1;
 }
