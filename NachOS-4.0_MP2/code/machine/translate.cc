@@ -208,12 +208,17 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
     if (tlb == NULL) {		// => page table => vpn is index into table
 	if (vpn >= pageTableSize) {
 	    DEBUG(dbgAddr, "Illegal virtual page # " << virtAddr);
+	    DEBUG(dbgAddr, "AddressError");
+	    DEBUG(dbgAddr, "VPN: " << vpn << ", page_Table_Size" << pageTableSize);
 	    return AddressErrorException;
 	} else if (!pageTable[vpn].valid) {
 	    DEBUG(dbgAddr, "Invalid virtual page # " << virtAddr);
+	    DEBUG(dbgAddr, "PageFault");
 	    return PageFaultException;
 	}
 	entry = &pageTable[vpn];
+	DEBUG(dbgAddr, "Page: " << vpn << " -> " << pageTable[vpn].physicalPage);
+	DEBUG(dbgAddr, "Addr: " << virtAddr << " -> " << pageTable[vpn].physicalPage * PageSize + offset);
     } else {
         for (entry = NULL, i = 0; i < TLBSize; i++)
     	    if (tlb[i].valid && (tlb[i].virtualPage == ((int)vpn))) {

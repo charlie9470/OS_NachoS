@@ -107,6 +107,9 @@ class Thread {
     void Print() { cout << name; }
     void SelfTest();		// test whether thread impl is working
 
+
+    int PGS;			// MP2 implementation the num of pages used by present loaded thread
+
   private:
     // some of the private data for this class is listed above
     

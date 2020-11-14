@@ -52,7 +52,6 @@ class Kernel {
     int WriteFile(char* buffer, int size, OpenFileId id); // fileSystem call
     int ReadFile(char* buffer, int size, OpenFileId id); // fileSystem call
     int CloseFile(OpenFileId id); // fileSystem call
-    int Get_Free_Frame();
 
 // These are public for notational convenience; really, 
 // they're global variables used everywhere.
@@ -71,7 +70,6 @@ class Kernel {
     PostOfficeOutput *postOfficeOut;
 
     int hostName;               // machine identifier
-    bool Free_Frame[128];	// MP2 implementation free frame array
 
   private:
 
