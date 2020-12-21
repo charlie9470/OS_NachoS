@@ -14,6 +14,7 @@
 //    -z prints the copyright message
 //    -s causes user programs to be executed in single-step mode
 //    -x runs a user program
+//    -ep runs user program with given priority
 //    -ci specify file for console input (stdin is the default)
 //    -co specify file for console output (stdout is the default)
 //    -n sets the network reliability
@@ -169,6 +170,7 @@ main(int argc, char **argv)
     int i;
     char *debugArg = "";
     char *userProgName = NULL;        // default is not to execute a user prog
+    int Priority = 0;
     bool threadTestFlag = false;
     bool consoleTestFlag = false;
     bool networkTestFlag = false;
@@ -197,6 +199,14 @@ main(int argc, char **argv)
 	    ASSERT(i + 1 < argc);
 	    userProgName = argv[i + 1];
 	    i++;
+	}
+	else if (strcmp(argv[i], "-ep") == 0) {
+	    ASSERT(i + 1 < argc);
+	    ASSERT(i + 2 < argc);
+	    std::cout << "userProgName: " << argv[i+1] << ",Priority: " << argv[i+2] << std::endl;
+	    userProgName = argv[i+1];
+	    Priority = atoi(argv[i+2]);
+	    i+=2;
 	}
 	else if (strcmp(argv[i], "-K") == 0) {
 	    threadTestFlag = TRUE;
@@ -234,6 +244,7 @@ main(int argc, char **argv)
 	else if (strcmp(argv[i], "-u") == 0) {
             cout << "Partial usage: nachos [-z -d debugFlags]\n";
             cout << "Partial usage: nachos [-x programName]\n";
+            cout << "Partial usage: nachos [-ep programName priority]\n";
 	    cout << "Partial usage: nachos [-K] [-C] [-N]\n";
 #ifndef FILESYS_STUB
             cout << "Partial usage: nachos [-cp UnixFile NachosFile]\n";

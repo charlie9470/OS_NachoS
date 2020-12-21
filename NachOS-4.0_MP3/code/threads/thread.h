@@ -79,6 +79,9 @@ class Thread {
     // THEY MUST be in this position for SWITCH to work.
     int *stackTop;			 // the current stack pointer
     void *machineState[MachineStateSize];  // all registers except for stackTop
+    int Priority;
+    int Level;
+    bool ToYield;
 
   public:
     Thread(char* debugName, int threadID);		// initialize a Thread 
@@ -102,13 +105,26 @@ class Thread {
     void setStatus(ThreadStatus st) { status = st; }
     ThreadStatus getStatus() { return (status); }
 	char* getName() { return (name); }
-    
+ 
 	int getID() { return (ID); }
+	int getPriority() {return Priority;}
+	int getLevel() {return Level;}
+	void updateRuntime();
+	void updateBursttime();
+	int getRuntime(){return Runtime;}
+	void updateApproxtime();
+	void SetPriority(int Priority);
     void Print() { cout << name; }
     void SelfTest();		// test whether thread impl is working
 
 
     int PGS;			// MP2 implementation the num of pages used by present loaded thread
+	int Stime;
+	int Etime;
+	int Wtime;
+	int Runtime;
+	int Bursttime;		//Total Runtime
+	int Approxtime;
 
   private:
     // some of the private data for this class is listed above
@@ -138,6 +154,7 @@ class Thread {
 
 // external function, dummy routine whose sole job is to call Thread::Print
 extern void ThreadPrint(Thread *thread);	 
+extern void ThreadAging(Thread *thread);	 
 
 // Magical machine-dependent routines, defined in switch.s
 
@@ -152,4 +169,6 @@ void ThreadRoot();
 void SWITCH(Thread *oldThread, Thread *newThread);
 }
 
+int SJFSort(Thread* t1,Thread* t2);
+int PrioritySort(Thread* t1,Thread* t2);
 #endif // THREAD_H

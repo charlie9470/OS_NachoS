@@ -11,8 +11,10 @@
 //	end up calling FindNextToRun(), and that would put us in an 
 //	infinite loop.
 //
-// 	Very simple implementation -- no priorities, straight FIFO.
+//*****************************************************************//
+//	Very simple implementation -- no priorities, straight FIFO.
 //	Might need to be improved in later assignments.
+//*****************************************************************//
 //
 // Copyright (c) 1992-1996 The Regents of the University of California.
 // All rights reserved.  See copyright.h for copyright notice and limitation 
@@ -31,7 +33,10 @@
 
 Scheduler::Scheduler()
 { 
-    readyList = new List<Thread *>; 
+//    readyList = new List<Thread *>; 
+    L1 = new SortedList<Thread *>(SJFSort); 
+    L2 = new SortedList<Thread *>(PrioritySort); 
+    L3 = new List<Thread *>; 
     toBeDestroyed = NULL;
 } 
 
@@ -42,7 +47,10 @@ Scheduler::Scheduler()
 
 Scheduler::~Scheduler()
 { 
-    delete readyList; 
+//    delete readyList; 
+	delete L1; 
+	delete L2; 
+	delete L3; 
 } 
 
 //----------------------------------------------------------------------
@@ -59,8 +67,25 @@ Scheduler::ReadyToRun (Thread *thread)
     ASSERT(kernel->interrupt->getLevel() == IntOff);
     DEBUG(dbgThread, "Putting thread on ready list: " << thread->getName());
 	//cout << "Putting thread on ready list: " << thread->getName() << endl ;
+	//How do I print Ticks if I don't have kernel object??? Actually, we do have the object.
     thread->setStatus(READY);
-    readyList->Append(thread);
+//    readyList->Append(thread);
+	if(thread->getLevel()==3){
+		L3->Append(thread);
+		insertLevel = 3;
+		DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks << ": Thread " << thread->getID() << " is inserted into queue L3");
+	}
+	else if(thread->getLevel()==2){
+		L2->Insert(thread);
+		insertLevel = 2;
+		DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks << ": Thread " << thread->getID() << " is inserted into queue L2");
+	}
+	else{
+		if(thread->getPriority()>=150) std::cout << "Priority out of range!!!" << std::endl;
+		L1->Insert(thread);
+		insertLevel = 1;
+		DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks << ": Thread " << thread->getID() << " is inserted into queue L1");
+	}
 }
 
 //----------------------------------------------------------------------
@@ -70,17 +95,53 @@ Scheduler::ReadyToRun (Thread *thread)
 // Side effect:
 //	Thread is removed from the ready list.
 //----------------------------------------------------------------------
-
+//TO DO
 Thread *
 Scheduler::FindNextToRun ()
 {
     ASSERT(kernel->interrupt->getLevel() == IntOff);
-
+//    kernel->scheduler->Print();
+	/*
     if (readyList->IsEmpty()) {
 		return NULL;
     } else {
     	return readyList->RemoveFront();
     }
+	*/
+	Thread * Tar;
+    if(!L1->IsEmpty()){
+	Tar = L1->RemoveFront();
+	DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks << ": Thread " << Tar->getID() << " is removed from queue L1");
+	return Tar;
+    }
+    else if(!L2->IsEmpty()){
+	Tar = L2->RemoveFront();
+	DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks << ": Thread " << Tar->getID() << " is removed from queue L2");
+	return Tar;
+    }
+    else if(!L3->IsEmpty()){
+	Tar = L3->RemoveFront();
+	DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks << ": Thread " << Tar->getID() << " is removed from queue L3");
+	return Tar;
+    }
+    else{
+	return NULL;
+    }
+}
+Thread *
+Scheduler::GetNextToRun()
+{
+    ASSERT(kernel->interrupt->getLevel() == IntOff);
+    if(!L1->IsEmpty()){
+	return L1->Front();
+    }
+    else if(!L2->IsEmpty()){
+	return L2->Front();
+    }
+    else if(!L3->IsEmpty()){
+	return L3->Front();
+    }
+    else return NULL;
 }
 
 //----------------------------------------------------------------------
@@ -122,18 +183,20 @@ Scheduler::Run (Thread *nextThread, bool finishing)
 
     kernel->currentThread = nextThread;  // switch to the next thread
     nextThread->setStatus(RUNNING);      // nextThread is now running
-    
+    nextThread->Stime = kernel->stats->totalTicks; //Set Stime
+ 
     DEBUG(dbgThread, "Switching from: " << oldThread->getName() << " to: " << nextThread->getName());
-    
+ 
     // This is a machine-dependent assembly language routine defined 
     // in switch.s.  You may have to think
     // a bit to figure out what happens after this, both from the point
     // of view of the thread and from the perspective of the "outside world".
 
+    DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks << ": Thread " << nextThread->getID() << " is now selected for execution, thread " << oldThread->getID() << " is replaced, and it has executed " << oldThread->Bursttime << " ticks");
     SWITCH(oldThread, nextThread);
 
     // we're back, running oldThread
-      
+ 
     // interrupts are off when we return from switch!
     ASSERT(kernel->interrupt->getLevel() == IntOff);
 
@@ -147,6 +210,7 @@ Scheduler::Run (Thread *nextThread, bool finishing)
         oldThread->RestoreUserState();     // to restore, do it.
 	oldThread->space->RestoreState();
     }
+    currentLevel = kernel->currentThread->getLevel();
 }
 
 //----------------------------------------------------------------------
@@ -175,5 +239,25 @@ void
 Scheduler::Print()
 {
     cout << "Ready list contents:\n";
-    readyList->Apply(ThreadPrint);
+//    readyList->Apply(ThreadPrint);
+    cout << "L1:";
+	L1->Apply(ThreadPrint);
+    cout << "\nL2:";
+	L2->Apply(ThreadPrint);
+    cout << "\nL3:";
+	L3->Apply(ThreadPrint);
+    cout << "\n";
+}
+void
+Scheduler::UpdateWtime(){
+	//CurrentThread is not in ReadyQueue
+	/*
+	auto& it = L1.begin();
+	for(it = L1.begin();it!= L1.end();it++){it->Aging();}
+	for(it = L2.begin();it!= L2.end();it++){it->Aging();}
+	for(it = L3.begin();it!= L3.end();it++){it->Aging();}
+	*/
+	L1->Apply(ThreadAging);
+	L2->Apply(ThreadAging);
+	L3->Apply(ThreadAging);
 }

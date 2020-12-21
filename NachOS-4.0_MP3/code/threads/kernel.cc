@@ -44,13 +44,17 @@ Kernel::Kernel(int argc, char **argv)
 	    	randomSlice = TRUE;
 	    	i++;
         } else if (strcmp(argv[i], "-s") == 0) {
-            debugUserProg = TRUE;
-		} else if (strcmp(argv[i], "-e") == 0) {
+		debugUserProg = TRUE;
+	} else if (strcmp(argv[i], "-ep") == 0){
         	execfile[++execfileNum]= argv[++i];
-			cout << execfile[execfileNum] << "\n";
-		} else if (strcmp(argv[i], "-ci") == 0) {
-	    	ASSERT(i + 1 < argc);
-	    	consoleIn = argv[i + 1];
+		Prior[execfileNum] = atoi(argv[++i]);
+		std::cout << execfile[execfileNum] << ": " << Prior[execfileNum] << std::endl;
+	} else if (strcmp(argv[i], "-e") == 0) {
+        	execfile[++execfileNum]= argv[++i];
+		std::cout << execfile[execfileNum] << "\n";
+	} else if (strcmp(argv[i], "-ci") == 0) {
+		ASSERT(i + 1 < argc);
+		consoleIn = argv[i + 1];
 	    	i++;
 		} else if (strcmp(argv[i], "-co") == 0) {
 	    	ASSERT(i + 1 < argc);
@@ -95,7 +99,7 @@ Kernel::Initialize()
     // object to save its state. 
 
 	
-    currentThread = new Thread("main", threadNum++);		
+    currentThread = new Thread("main", threadNum++);
     currentThread->setStatus(RUNNING);
 
     stats = new Statistics();		// collect statistics
@@ -111,8 +115,8 @@ Kernel::Initialize()
 #else
     fileSystem = new FileSystem(formatFlag);
 #endif // FILESYS_STUB
-    postOfficeIn = new PostOfficeInput(10);
-    postOfficeOut = new PostOfficeOutput(reliability);
+//    postOfficeIn = new PostOfficeInput(10);
+//    postOfficeOut = new PostOfficeOutput(reliability);
 
     interrupt->Enable();
 }
@@ -133,8 +137,8 @@ Kernel::~Kernel()
     delete synchConsoleOut;
     delete synchDisk;
     delete fileSystem;
-    delete postOfficeIn;
-    delete postOfficeOut;
+//    delete postOfficeIn;
+//    delete postOfficeOut;
     
     Exit(0);
 }
@@ -261,16 +265,18 @@ void ForkExecute(Thread *t)
 void Kernel::ExecAll()
 {
 	for (int i=1;i<=execfileNum;i++) {
-		int a = Exec(execfile[i]);
+		int a = Exec(execfile[i],Prior[i]);
 	}
 	currentThread->Finish();
     //Kernel::Exec();	
 }
 
 
-int Kernel::Exec(char* name)
+int Kernel::Exec(char* name,int Pri)
 {
 	t[threadNum] = new Thread(name, threadNum);
+	t[threadNum]->SetPriority(Pri);
+	std::cout << "Run " << name << "with Pri: " << Pri <<", ID: " << threadNum << std::endl;
 	t[threadNum]->space = new AddrSpace();
 	t[threadNum]->Fork((VoidFunctionPtr) &ForkExecute, (void *)t[threadNum]);
 	threadNum++;

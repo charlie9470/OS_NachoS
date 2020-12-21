@@ -36,9 +36,16 @@ const int STACK_FENCEPOST = 0xdedbeef;
 Thread::Thread(char* threadName, int threadID)
 {
 	ID = threadID;
+	Stime = 0;
+	Etime = 0;
+	Wtime = 0;
+	Runtime = 0;
+	Bursttime = 0;
+	Approxtime = 0;
     name = threadName;
     stackTop = NULL;
     stack = NULL;
+    Priority = 0;
     status = JUST_CREATED;
     for (int i = 0; i < MachineStateSize; i++) {
 	machineState[i] = NULL;		// not strictly necessary, since
@@ -102,7 +109,7 @@ Thread::Fork(VoidFunctionPtr func, void *arg)
     scheduler->ReadyToRun(this);	// ReadyToRun assumes that interrupts 
 					// are disabled!
     (void) interrupt->SetLevel(oldLevel);
-}    
+}
 
 //----------------------------------------------------------------------
 // Thread::CheckOverflow
@@ -147,7 +154,7 @@ Thread::Begin ()
 {
     ASSERT(this == kernel->currentThread);
     DEBUG(dbgThread, "Beginning thread: " << name);
-    
+ 
     kernel->scheduler->CheckToBeDestroyed();
     kernel->interrupt->Enable();
 }
@@ -174,6 +181,7 @@ Thread::Finish ()
     ASSERT(this == kernel->currentThread);
     
     DEBUG(dbgThread, "Finishing thread: " << name);
+    std::cout << "Thread " << this->getID() << " finished" << std::endl;
     Sleep(TRUE);				// invokes SWITCH
     // not reached
 }
@@ -197,6 +205,7 @@ Thread::Finish ()
 // 	Similar to Thread::Sleep(), but a little different.
 //----------------------------------------------------------------------
 
+//TODO
 void
 Thread::Yield ()
 {
@@ -205,13 +214,25 @@ Thread::Yield ()
     
     ASSERT(this == kernel->currentThread);
     
-    DEBUG(dbgThread, "Yielding thread: " << name);
+    Etime = kernel->stats->totalTicks;
+    this->updateBursttime();
+//    if(this->Bursttime<100&&this->getLevel() == 3) std::cout << "Runtime not 100 and yielded!!!!!! Thread " << this->getID() << std::endl;
+//    if(this->Bursttime<100&&this->getLevel() == 3) std::cout << this->getRuntime() << "," << this->Approxtime << std::endl;
     
-    nextThread = kernel->scheduler->FindNextToRun();
+    nextThread = kernel->scheduler->GetNextToRun();
     if (nextThread != NULL) {
+	if((this->Bursttime>=100&&this->getLevel() == 3)|| //if executed for more than 100 ticks and is RR
+	    (nextThread->getLevel()<kernel->scheduler->currentLevel)||//if ReadyQueue has higher priority task (Queue level)
+	    (nextThread->getLevel()==kernel->scheduler->currentLevel&&kernel->scheduler->currentLevel==1&&
+	     nextThread->Approxtime<kernel->currentThread->Approxtime))//preempty SJF
+	{
+    	DEBUG(dbgThread, "Yielding thread: " << name);
+	this->updateRuntime();
+	nextThread = kernel->scheduler->FindNextToRun();
 	kernel->scheduler->ReadyToRun(this);
 	kernel->scheduler->Run(nextThread, FALSE);
-    }
+    	}
+	}
     (void) kernel->interrupt->SetLevel(oldLevel);
 }
 
@@ -245,7 +266,11 @@ Thread::Sleep (bool finishing)
     
     DEBUG(dbgThread, "Sleeping thread: " << name);
     DEBUG(dbgTraCode, "In Thread::Sleep, Sleeping thread: " << name << ", " << kernel->stats->totalTicks);
-
+    this->Etime = kernel->stats->totalTicks;
+    this->updateBursttime();
+    this->updateRuntime();
+    this->updateApproxtime();
+    
     status = BLOCKED;
 	//cout << "debug Thread::Sleep " << name << "wait for Idle\n";
     while ((nextThread = kernel->scheduler->FindNextToRun()) == NULL) {
@@ -266,6 +291,21 @@ Thread::Sleep (bool finishing)
 static void ThreadFinish()    { kernel->currentThread->Finish(); }
 static void ThreadBegin() { kernel->currentThread->Begin(); }
 void ThreadPrint(Thread *t) { t->Print(); }
+void ThreadAging(Thread *t){
+	//accumulate time
+	//Confused whether it should ++ or +timerTicks
+	t->Wtime+=TimerTicks;
+//	std::cout << "Ticks" << kernel->stats->totalTicks << ": increment Wtime by 100" << std::endl; 
+	if(t->Wtime>1500){
+	int oldPri = t->getPriority();
+	t->SetPriority(t->getPriority()+10);
+	if(t->getPriority()>149) t->SetPriority(149);
+	DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks
+ 	      << ": Thread " << t->getID() << " changes its priority from "
+	      << oldPri << " to " << t->getPriority());
+	t->Wtime = 0;
+	}
+}
 
 #ifdef PARISC
 
@@ -434,3 +474,40 @@ Thread::SelfTest()
     kernel->currentThread->Yield();
     SimpleThread(0);
 }
+void
+Thread::SetPriority(int Priority){
+	this->Priority = Priority;
+	if(Priority<50) this->Level = 3;
+	else if(Priority<100) this->Level = 2;
+	else this->Level = 1;
+}
+int SJFSort(Thread* t1,Thread* t2){
+	if(t1->Approxtime<t2->Approxtime) return -1;
+	if(t1->Approxtime==t2->Approxtime) return 0;
+	if(t1->Approxtime>t2->Approxtime) return 1;
+}
+int PrioritySort(Thread* t1,Thread* t2){
+	if (t1->getPriority()<t2->getPriority()) return 1;
+	if (t1->getPriority()==t2->getPriority()) return 0;
+	if (t1->getPriority()>t2->getPriority()) return -1;
+}
+void
+Thread::updateRuntime(){
+	Runtime+=Bursttime;
+//	std::cout << "update Runtime: " << Runtime << std::endl;
+}
+void
+Thread::updateBursttime(){
+	if(Etime<Stime) std::cout << "Etime < Stime" << std::endl;
+	Bursttime = Etime-Stime;
+//	std::cout << "update Bursttime: " << Bursttime << std::endl;
+}
+void
+Thread::updateApproxtime(){
+	int oldtime = Approxtime;
+	Approxtime = (Approxtime + Bursttime)*0.5;
+	DEBUG(dbgPri, "Tick " << kernel->stats->totalTicks
+ 	<< ": Thread " << this->getID() << " update approximate burst time, from: "
+	<< oldtime << ", add " << this->Bursttime << ", to " << this->Approxtime);
+}
+

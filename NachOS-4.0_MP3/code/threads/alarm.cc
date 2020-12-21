@@ -46,10 +46,42 @@ Alarm::Alarm(bool doRandom)
 void 
 Alarm::CallBack() 
 {
+//    std::cout << "-----Timer alarm----- Ticks: " << kernel->stats->totalTicks << std::endl;
+    Thread* Cur = kernel->currentThread;
+    Scheduler* Sche = kernel->scheduler;
+//	Sche->Print();
+    //Update Runtime every timer alarm
+//    Cur->Runtime+=TimerTicks;
+    Cur->Runtime++;
+    Sche->UpdateWtime();
     Interrupt *interrupt = kernel->interrupt;
     MachineStatus status = interrupt->getStatus();
     
     if (status != IdleMode) {
 	interrupt->YieldOnReturn();
     }
+/*
+	//Level 3 Round-Robin
+	//Yield and return to queue every timer alarm
+    Thread* tmp = Sche->GetNextToRun();
+    int nextLevel = 0;
+    if(tmp==NULL) return;
+    nextLevel = tmp->getLevel();
+    if(Sche->currentLevel == 3&&Cur->Runtime>100){
+	Cur->Yield();
+*/	/*
+	if(tmp->getPriority()<50){
+		tmp = Sche->FindNextToRun();
+		
+	}
+	else{
+	}
+	*/
+/*    }
+	//if next is higher level queue
+	//Preempty
+    if(nextLevel<Sche->currentLevel){
+	Cur->Yield();
+    }
+*/
 }

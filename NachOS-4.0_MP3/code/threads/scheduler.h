@@ -26,17 +26,26 @@ class Scheduler {
     				// Thread can be dispatched.
     Thread* FindNextToRun();	// Dequeue first thread on the ready 
 				// list, if any, and return thread.
+    Thread* GetNextToRun();	// Get first thread on the ready 
+				// But does not dequeue it.
     void Run(Thread* nextThread, bool finishing);
     				// Cause nextThread to start running
     void CheckToBeDestroyed();// Check if thread that had been
     				// running needs to be deleted
     void Print();		// Print contents of ready list
-    
+    void UpdateWtime();
+    int currentLevel;
+    int insertLevel;
+ 
     // SelfTest for scheduler is implemented in class Thread
-    
-  private:
+ 
+  private:/*
     List<Thread *> *readyList;  // queue of threads that are ready to run,
 				// but not running
+    */
+    SortedList<Thread*> *L1;	// highest level ready list with priority 100~149
+    SortedList<Thread*> *L2;	// second level ready list with priority 50~99
+    List<Thread*> *L3;	// lowest level ready list with priority 0~49
     Thread *toBeDestroyed;	// finishing thread to be destroyed
     				// by the next thread that runs
 };
